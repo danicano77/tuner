@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Afinador de guitarra</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#120e0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Afinador">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg-0:#120e0b;
+    --bg-1:#1c1611;
+    --wood:#3f2c1d;
+    --wood-light:#5a3f28;
+    --brass:#c9a24b;
+    --brass-dim:#8a713a;
+    --cream:#efe6d6;
+    --cream-dim:#b8ac96;
+    --in-tune:#7fa66b;
+    --near:#d3a94a;
+    --off:#c1573f;
+  }
+
+  *{ box-sizing:border-box; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition-duration:.01ms !important; animation-duration:.01ms !important; }
+  }
+
+  html,body{
+    margin:0; height:100%;
+    background:
+      radial-gradient(120% 90% at 50% -10%, #2a2018 0%, var(--bg-0) 55%),
+      var(--bg-0);
+    color:var(--cream);
+    font-family:ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+  }
+
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px 16px;
+  }
+
+  .rig{
+    width:100%;
+    max-width:460px;
+  }
+
+  .headline{
+    text-align:center;
+    margin:0 0 22px;
+  }
+  .headline h1{
+    font-family:Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Noto Serif', serif;
+    font-weight:600;
+    font-size:clamp(26px,6vw,34px);
+    letter-spacing:.2px;
+    margin:0 0 4px;
+    color:var(--cream);
+  }
+  .headline p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--cream-dim);
+    letter-spacing:.3px;
+  }
+
+  .panel{
+    background:linear-gradient(180deg, var(--bg-1), #161009);
+    border:1px solid #2c2117;
+    border-radius:18px;
+    padding:26px 22px 22px;
+    box-shadow:
+      0 30px 60px -25px rgba(0,0,0,.7),
+      inset 0 1px 0 rgba(255,255,255,.03);
+  }
+
+  /* --- Gauge --- */
+  .gauge-wrap{
+    position:relative;
+    width:100%;
+    max-width:340px;
+    margin:0 auto;
+  }
+  svg#gauge{ display:block; width:100%; height:auto; }
+
+  #needle{
+    transition:stroke .3s ease;
+  }
+  #needleHub{ transition:fill .2s ease; }
+
+  .readout{
+    text-align:center;
+    margin-top:2px;
+  }
+  .note-big{
+    font-family:Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Noto Serif', serif;
+    font-weight:700;
+    font-size:clamp(56px,16vw,72px);
+    line-height:1;
+    color:var(--cream);
+    transition:color .2s ease;
+    min-height:1.05em;
+  }
+  .note-big.in-tune{ color:var(--in-tune); }
+  .note-big.off{ color:var(--off); }
+
+  .sub-readout{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    margin-top:6px;
+    font-size:13px;
+    color:var(--cream-dim);
+    letter-spacing:.4px;
+  }
+  .sub-readout b{ color:var(--brass); font-weight:600; }
+
+  .status-line{
+    text-align:center;
+    min-height:18px;
+    font-size:12px;
+    color:var(--cream-dim);
+    margin-top:10px;
+    letter-spacing:.3px;
+  }
+
+  /* --- Strings row --- */
+  .strings{
+    display:flex;
+    gap:6px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin:22px 0 4px;
+  }
+  .string-btn{
+    background:var(--wood);
+    border:1px solid #4a3320;
+    color:var(--cream-dim);
+    font-family:ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+    font-size:13px;
+    font-weight:500;
+    padding:9px 4px;
+    width:52px;
+    border-radius:9px;
+    cursor:default;
+    transition:background .2s ease, color .2s ease, border-color .2s ease, transform .15s ease;
+  }
+  .string-btn.active{
+    background:var(--brass);
+    border-color:var(--brass);
+    color:#20160a;
+    transform:translateY(-2px);
+  }
+  .string-btn .hz{
+    display:block;
+    font-size:9.5px;
+    opacity:.7;
+    margin-top:2px;
+  }
+
+  .chromatic-note .strings{ display:none; }
+
+  /* --- Controls --- */
+  .controls{
+    margin-top:20px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  label.field-label{
+    font-size:12px;
+    color:var(--cream-dim);
+    letter-spacing:.4px;
+  }
+  select{
+    background:var(--wood);
+    color:var(--cream);
+    border:1px solid #4a3320;
+    border-radius:8px;
+    padding:8px 10px;
+    font-family:ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', 'Courier New', monospace;
+    font-size:13px;
+    flex:1;
+    max-width:220px;
+  }
+  select:focus-visible, .toggle:focus-visible, .string-btn:focus-visible{
+    outline:2px solid var(--brass);
+    outline-offset:2px;
+  }
+
+  .toggle{
+    position:relative;
+    width:44px; height:25px;
+    background:var(--wood);
+    border:1px solid #4a3320;
+    border-radius:999px;
+    cursor:pointer;
+    flex-shrink:0;
+    transition:background .2s ease;
+  }
+  .toggle::after{
+    content:'';
+    position:absolute;
+    top:2px; left:2px;
+    width:19px; height:19px;
+    background:var(--cream-dim);
+    border-radius:50%;
+    transition:transform .2s ease, background .2s ease;
+  }
+  .toggle.on{ background:var(--brass-dim); }
+  .toggle.on::after{ transform:translateX(19px); background:var(--brass); }
+
+  canvas#wave{
+    display:block;
+    width:100%;
+    height:36px;
+    margin-top:16px;
+    opacity:.55;
+  }
+
+  .level-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:6px;
+  }
+  .level-row span{
+    font-size:10px;
+    color:var(--cream-dim);
+    white-space:nowrap;
+  }
+  .level-track{
+    flex:1;
+    height:5px;
+    background:var(--wood);
+    border-radius:999px;
+    overflow:hidden;
+  }
+  .level-fill{
+    height:100%;
+    width:0%;
+    background:var(--brass);
+    transition:width .08s linear, background .15s ease;
+  }
+
+  .debug{
+    display:none;
+    margin-top:10px;
+    padding:8px 10px;
+    background:#0e0b08;
+    border:1px dashed #4a3320;
+    border-radius:8px;
+    font-size:11px;
+    line-height:1.5;
+    color:var(--cream-dim);
+    white-space:pre-wrap;
+  }
+  .debug.on{ display:block; }
+  .headline h1{ cursor:default; -webkit-tap-highlight-color:transparent; }
+
+  .footnote{
+    text-align:center;
+    font-size:11px;
+    color:#7a6f5c;
+    margin-top:16px;
+    letter-spacing:.2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="rig">
+  <div class="headline">
+    <h1 id="title">Afinador</h1>
+    <p>Afinación por micrófono · cromático o por afinación de guitarra</p>
+  </div>
+
+  <div class="panel" id="panel">
+
+    <div class="gauge-wrap">
+      <svg id="gauge" viewBox="0 0 340 190">
+        <!-- tick marks -->
+        <g id="ticks" stroke="#4a3d2e" stroke-width="2"></g>
+        <!-- arc -->
+        <path d="M 30 170 A 140 140 0 0 1 310 170" fill="none" stroke="#3a2e21" stroke-width="3"/>
+        <path id="arcActive" d="M 30 170 A 140 140 0 0 1 310 170" fill="none" stroke="var(--brass-dim)" stroke-width="3" stroke-dasharray="0 440" />
+        <!-- needle -->
+        <line id="needle" x1="170" y1="168" x2="170" y2="45" stroke="var(--brass)" stroke-width="3" stroke-linecap="round"/>
+        <circle id="needleHub" cx="170" cy="168" r="7" fill="var(--brass)"/>
+      </svg>
+
+      <div class="readout">
+        <div class="note-big" id="noteBig">–</div>
+        <div class="sub-readout">
+          <span><b id="freqOut">0.0</b> Hz</span>
+          <span><b id="centsOut">0</b>¢</span>
+        </div>
+      </div>
+      <div class="status-line" id="statusLine">Iniciando micrófono…</div>
+      <div class="debug" id="debugLine"></div>
+    </div>
+
+    <div class="chromatic-note" id="chromaticWrap">
+      <div class="strings" id="stringsRow"></div>
+    </div>
+
+    <div class="controls">
+      <div class="row">
+        <label class="field-label" for="tuningSelect">Afinación</label>
+        <select id="tuningSelect"></select>
+      </div>
+      <div class="row">
+        <label class="field-label" for="chromaticToggle">Modo cromático</label>
+        <div class="toggle" id="chromaticToggle" role="switch" aria-checked="false" tabindex="0"></div>
+      </div>
+      <canvas id="wave" width="600" height="72"></canvas>
+      <div class="level-row">
+        <span>Nivel</span>
+        <div class="level-track"><div class="level-fill" id="levelFill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footnote">El sonido se procesa en el navegador; no se graba ni se envía nada.</p>
+</div>
+
+<script>
+(function(){
+
+  // ---------- Music theory helpers ----------
+  const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+  function noteNameToMidi(name, octave){
+    const idx = NOTE_NAMES.indexOf(name);
+    return idx + (octave + 1) * 12;
+  }
+  function midiToFreq(midi){
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+  function freqToMidiFloat(freq){
+    return 69 + 12 * Math.log2(freq / 440);
+  }
+
+  // ---------- Tuning presets ----------
+  const TUNINGS = {
+    standard: { label:'Estándar (E A D G B E)',      strings:[['E',2],['A',2],['D',3],['G',3],['B',3],['E',4]] },
+    bass4:    { label:'Bajo 4 cuerdas (E A D G)',     strings:[['E',1],['A',1],['D',2],['G',2]] },
+    dropB:    { label:'Drop B (B F# B E G# C#)',      strings:[['B',1],['F#',2],['B',2],['E',3],['G#',3],['C#',4]] },
+    bass5:    { label:'Bajo 5 cuerdas (B E A D G)',   strings:[['B',0],['E',1],['A',1],['D',2],['G',2]] },
+    dropD:    { label:'Drop D (D A D G B E)',         strings:[['D',2],['A',2],['D',3],['G',3],['B',3],['E',4]] },
+    dStandard:{ label:'D estándar (D G C F A D)',     strings:[['D',2],['G',2],['C',3],['F',3],['A',3],['D',4]] },
+  };
+
+  const tuningSelect = document.getElementById('tuningSelect');
+  Object.keys(TUNINGS).forEach(key=>{
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = TUNINGS[key].label;
+    tuningSelect.appendChild(opt);
+  });
+  tuningSelect.value = 'standard';
+
+  // ---------- UI refs ----------
+  const stringsRow = document.getElementById('stringsRow');
+  const chromaticWrap = document.getElementById('chromaticWrap');
+  const chromaticToggle = document.getElementById('chromaticToggle');
+  const noteBig = document.getElementById('noteBig');
+  const freqOut = document.getElementById('freqOut');
+  const centsOut = document.getElementById('centsOut');
+  const statusLine = document.getElementById('statusLine');
+  const needle = document.getElementById('needle');
+  const needleHub = document.getElementById('needleHub');
+  const arcActive = document.getElementById('arcActive');
+  const ticksG = document.getElementById('ticks');
+  const waveCanvas = document.getElementById('wave');
+  const waveCtx = waveCanvas.getContext('2d');
+  const levelFill = document.getElementById('levelFill');
+
+  let isChromatic = false;
+  let displayAngle = 0;       // the angle actually drawn — eased manually, always around the same pivot
+  let currentStringButtons = [];
+
+  function buildTicks(){
+    ticksG.innerHTML = '';
+    for(let i=-5;i<=5;i++){
+      const angle = (i/5) * 45; // -45..45 deg
+      const rad = (angle-90) * Math.PI/180;
+      const cx = 170, cy = 168, rOuter = 140, rInner = i===0 ? 122 : 130;
+      const x1 = cx + rOuter*Math.cos(rad), y1 = cy + rOuter*Math.sin(rad);
+      const x2 = cx + rInner*Math.cos(rad), y2 = cy + rInner*Math.sin(rad);
+      const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', i===0 ? 'var(--brass)' : '#4a3d2e');
+      line.setAttribute('stroke-width', i===0 ? 3 : 2);
+      ticksG.appendChild(line);
+    }
+  }
+  buildTicks();
+
+  function renderStringButtons(){
+    stringsRow.innerHTML = '';
+    currentStringButtons = [];
+    const tuning = TUNINGS[tuningSelect.value];
+    tuning.strings.forEach(([name, oct])=>{
+      const midi = noteNameToMidi(name, oct);
+      const freq = midiToFreq(midi);
+      const btn = document.createElement('div');
+      btn.className = 'string-btn';
+      btn.innerHTML = `${name}${oct}<span class="hz">${freq.toFixed(1)}</span>`;
+      btn.dataset.midi = midi;
+      stringsRow.appendChild(btn);
+      currentStringButtons.push(btn);
+    });
+  }
+  renderStringButtons();
+  tuningSelect.addEventListener('change', renderStringButtons);
+
+  function setChromatic(on){
+    isChromatic = on;
+    chromaticToggle.classList.toggle('on', on);
+    chromaticToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+    document.getElementById('chromaticWrap').style.display = on ? 'none' : 'block';
+    tuningSelect.disabled = on;
+    tuningSelect.style.opacity = on ? .45 : 1;
+  }
+  chromaticToggle.addEventListener('click', ()=> setChromatic(!isChromatic));
+  chromaticToggle.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setChromatic(!isChromatic); }
+  });
+
+  // ---------- Needle / readout rendering ----------
+  function clearReadout(){
+    noteBig.textContent = '–';
+    noteBig.classList.remove('in-tune','off');
+    freqOut.textContent = '0.0';
+    centsOut.textContent = '0';
+    displayAngle = 0;
+    needle.setAttribute('transform', 'rotate(0 170 168)');
+    needle.setAttribute('stroke', 'var(--brass)');
+    needleHub.setAttribute('fill', 'var(--brass)');
+    arcActive.setAttribute('stroke-dasharray', '0 440');
+    currentStringButtons.forEach(b=>b.classList.remove('active'));
+  }
+  clearReadout();
+
+  // ---------- Audio / pitch detection ----------
+  // Design follows what well-regarded open-source tuners do:
+  //  * band-limit the input (high-pass + low-pass) so harmonics don't confuse the detector
+  //  * YIN pitch detection (cumulative mean normalised difference) — resistant to octave jumps
+  //  * median filter over the last few readings
+  //  * detect the pick attack, ignore it, and restart from the centre for every new note
+  //  * needle with inertia ("ballistics") and a small dead-zone around the centre
+  let audioCtx, analyser, mediaStream, sourceNode, hpNode, lpNode, gainNode, rafId;
+  let listening = false;
+  const bufferLength = 4096;
+  const dataBuffer = new Float32Array(bufferLength);
+
+  let midiHist = [];            // recent pitch readings (fractional MIDI numbers)
+  let lockedMidi = null;        // target note currently shown
+  let pendingMidi = null;       // candidate note waiting to be confirmed
+  let pendingCount = 0;
+  let noteActive = false;       // are we currently showing a note?
+  let needleTargetCents = 0;
+  let lastDetectTime = 0;       // last time a valid pitch was heard
+  let lastRunTime = 0;          // last time the detector ran
+  let holdUntil = 0;            // ignore the detector until then (pick attack)
+  let envSlow = 0;              // slow loudness envelope, used to spot a new pluck
+  let lastOnset = 0;
+  let lastFrameT = 0;
+  let lpApplied = 0;
+  let actualCents = 0;          // real deviation (the needle uses a dead-zoned version of it)
+  let displayCents = 0;
+  const dbg = { runs:0, nulls:0, onsets:0, freq:0, clarity:0, rms:0, last:0, txt:'' };
+  const debugLine = document.getElementById('debugLine');
+  document.getElementById('title').addEventListener('click', ()=> debugLine.classList.toggle('on'));
+
+  function resetTracker(){
+    midiHist = []; lockedMidi = null; pendingMidi = null; pendingCount = 0;
+    noteActive = false; needleTargetCents = 0; actualCents = 0;
+  }
+
+  function showIdle(){
+    noteBig.textContent = '–';
+    freqOut.textContent = '0.0';
+    centsOut.textContent = '0';
+    currentStringButtons.forEach(b=>b.classList.remove('active'));
+  }
+
+  async function startListening(){
+    statusLine.textContent = 'Solicitando acceso al micrófono…';
+    try{
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
+    }catch(err){
+      statusLine.textContent = 'No se pudo acceder al micrófono. Toca aquí para reintentar.';
+      statusLine.style.cursor = 'pointer';
+      return;
+    }
+    statusLine.style.cursor = 'default';
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+
+    sourceNode = audioCtx.createMediaStreamSource(mediaStream);
+    hpNode = audioCtx.createBiquadFilter();       // removes rumble / handling noise
+    hpNode.type = 'highpass'; hpNode.frequency.value = 20; hpNode.Q.value = 0.7;
+    lpNode = audioCtx.createBiquadFilter();       // softens harmonics (frequency set per tuning)
+    lpNode.type = 'lowpass'; lpNode.frequency.value = 1200; lpNode.Q.value = 0.7;
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 4.5;                    // boosts quiet acoustic pickup
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = bufferLength;
+    sourceNode.connect(hpNode); hpNode.connect(lpNode); lpNode.connect(gainNode); gainNode.connect(analyser);
+
+    listening = true;
+    resetTracker(); showIdle();
+    lastFrameT = 0;
+    statusLine.textContent = 'Escuchando…';
+    loop();
+  }
+
+  function stopListening(){
+    listening = false;
+    resetTracker();
+    if(rafId) cancelAnimationFrame(rafId);
+    if(sourceNode) sourceNode.disconnect();
+    if(mediaStream) mediaStream.getTracks().forEach(t=>t.stop());
+    if(audioCtx) audioCtx.close();
+    statusLine.textContent = 'Micrófono detenido.';
+    clearReadout();
+    waveCtx.clearRect(0,0,waveCanvas.width, waveCanvas.height);
+  }
+
+  statusLine.addEventListener('click', ()=>{ if(!listening) startListening(); });
+  // Some browsers start the audio engine suspended until the user touches the page.
+  document.addEventListener('pointerdown', ()=>{
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  });
+
+  // The tuner starts listening as soon as the app loads — no button needed.
+  startListening();
+
+  // ---------- YIN pitch detection ----------
+  // de Cheveigné & Kawahara (2002): difference function -> cumulative mean
+  // normalisation -> absolute threshold -> parabolic interpolation.
+  const cmndf = new Float32Array(bufferLength);
+  function yin(buf, sr, minF, maxF){
+    const N = buf.length;
+    const tauMin = Math.max(2, Math.floor(sr / maxF));
+    const tauMax = Math.min(Math.ceil(sr / minF), Math.floor(N * 0.55));
+    const W = N - tauMax;
+    if(W < 512 || tauMax <= tauMin + 2) return null;
+
+    cmndf[0] = 1;
+    let running = 0;
+    for(let tau=1; tau<=tauMax; tau++){
+      let sum = 0;
+      for(let j=0; j<W; j++){ const d = buf[j] - buf[j+tau]; sum += d*d; }
+      running += sum;
+      cmndf[tau] = running > 0 ? sum * tau / running : 1;
+    }
+
+    // first dip below the threshold, then walk down to its local minimum
+    let tau = -1;
+    for(let t=tauMin; t<=tauMax; t++){
+      if(cmndf[t] < 0.15){
+        while(t+1 <= tauMax && cmndf[t+1] < cmndf[t]) t++;
+        tau = t; break;
+      }
+    }
+    if(tau < 0){            // nothing clearly periodic: accept the best dip only if it's decent
+      let best = Infinity, bt = -1;
+      for(let t=tauMin; t<=tauMax; t++) if(cmndf[t] < best){ best = cmndf[t]; bt = t; }
+      if(best < 0.3) tau = bt; else return null;
+    }
+
+    let t0 = tau;
+    if(tau > 1 && tau < tauMax){
+      const a = cmndf[tau-1], b = cmndf[tau], c = cmndf[tau+1];
+      const den = a + c - 2*b;
+      if(den !== 0) t0 = tau + (a - c) / (2*den);
+    }
+    const freq = sr / t0;
+    if(freq < minF*0.95 || freq > maxF) return null;
+    return { freq, clarity: 1 - cmndf[tau] };
+  }
+
+  function drawWave(buffer){
+    waveCtx.clearRect(0,0,waveCanvas.width, waveCanvas.height);
+    waveCtx.beginPath();
+    waveCtx.strokeStyle = '#c9a24b';
+    waveCtx.lineWidth = 1.5;
+    const step = buffer.length / waveCanvas.width;
+    for(let x=0; x<waveCanvas.width; x++){
+      const v = buffer[Math.floor(x*step)] || 0;
+      const y = waveCanvas.height/2 + v * waveCanvas.height/2.2;
+      if(x===0) waveCtx.moveTo(x,y); else waveCtx.lineTo(x,y);
+    }
+    waveCtx.stroke();
+  }
+
+  // ---------- Notes & strings ----------
+  // Distance in semitones folded into [-6, 6): a string and its octaves count as
+  // the same note, so a low string heard through its 2nd harmonic still tunes right.
+  function foldOctave(d){ return d - 12*Math.round(d/12); }
+
+  function stringMidis(){
+    return TUNINGS[tuningSelect.value].strings
+      .map(([name, oct]) => noteNameToMidi(name, oct))
+      .sort((a,b)=>a-b);
+  }
+
+  function nearestStringMidi(midiFloat){
+    let best = null, bestScore = Infinity;
+    stringMidis().forEach(m=>{
+      const octGap = Math.abs(Math.round((midiFloat - m) / 12));
+      const score = Math.abs(foldOctave(midiFloat - m)) + 0.001*octGap; // ties -> lower string
+      if(score < bestScore){ bestScore = score; best = m; }
+    });
+    return best;
+  }
+
+  // ---------- Needle (ballistics) ----------
+  function renderNeedle(dt){
+    const clamped = Math.max(-50, Math.min(50, needleTargetCents));
+    const targetAngle = noteActive ? (clamped / 50) * 45 : 0;
+    // exponential approach: the needle has "inertia", and drifts back to the
+    // centre more slowly when the note ends
+    const tau = noteActive ? 0.25 : 0.3;
+    displayAngle += (targetAngle - displayAngle) * (1 - Math.exp(-dt / tau));
+    if(Math.abs(targetAngle - displayAngle) < 0.02) displayAngle = targetAngle;
+    // always a pure rotation around the fixed pivot
+    needle.setAttribute('transform', `rotate(${displayAngle.toFixed(2)} 170 168)`);
+
+    displayCents += ((noteActive ? actualCents : 0) - displayCents) * (1 - Math.exp(-dt / tau));
+    let color = 'var(--brass)';
+    noteBig.classList.remove('in-tune','off');
+    if(noteActive){
+      const absC = Math.abs(displayCents);
+      if(absC < 5){ color = 'var(--in-tune)'; noteBig.classList.add('in-tune'); }
+      else if(absC < 15){ color = 'var(--near)'; }
+      else { color = 'var(--off)'; noteBig.classList.add('off'); }
+    }
+    needle.setAttribute('stroke', color);
+    needleHub.setAttribute('fill', color);
+    const dash = noteActive ? (Math.min(Math.abs(displayAngle),45)/45) * 220 : 0;
+    arcActive.setAttribute('stroke-dasharray', `${dash} 440`);
+    arcActive.setAttribute('stroke', color);
+  }
+
+  // ---------- Main loop ----------
+  function loop(){
+    if(!listening) return;
+    rafId = requestAnimationFrame(loop);
+    const now = performance.now();
+    const dt = lastFrameT ? Math.min(0.1, (now - lastFrameT) / 1000) : 0.016;
+    lastFrameT = now;
+
+    analyser.getFloatTimeDomainData(dataBuffer);
+    drawWave(dataBuffer);
+
+    // loudness: whole window (for the meter / gate) and the most recent ~20 ms (for attack detection)
+    let peak = 0, sumAll = 0, sumRecent = 0;
+    const tail = dataBuffer.length - 1024;
+    for(let i=0;i<dataBuffer.length;i++){
+      const v = dataBuffer[i], a = Math.abs(v);
+      if(a > peak) peak = a;
+      sumAll += v*v;
+      if(i >= tail) sumRecent += v*v;
+    }
+    const rmsAll = Math.sqrt(sumAll / dataBuffer.length);
+    const rmsRecent = Math.sqrt(sumRecent / 1024);
+    const levelPct = Math.min(100, peak * 130);
+    levelFill.style.width = levelPct + '%';
+    levelFill.style.background = peak < 0.01 ? 'var(--off)' : (levelPct > 90 ? 'var(--near)' : 'var(--brass)');
+
+    // New pluck: loudness jumps well above its slow envelope. Ignore the attack
+    // (its pitch is unstable) and start again from the centre.
+    const needRatio = noteActive ? 3.5 : 2.0;      // while tuning a note, only a big jump counts as a re-pluck
+    const minGap = noteActive ? 400 : 250;
+    if(rmsRecent > 0.02 && rmsRecent > envSlow * needRatio && now - lastOnset > minGap){
+      dbg.onsets++;
+      lastOnset = now;
+      holdUntil = now + 170;
+      resetTracker();
+      showIdle();
+      statusLine.textContent = 'Escuchando…';
+    }
+    envSlow += (rmsRecent - envSlow) * (rmsRecent > envSlow ? 0.3 : 0.04);
+
+    // keep the low-pass just above the highest string we care about
+    const lpTarget = isChromatic ? 1600
+      : Math.min(1600, Math.max(500, midiToFreq(stringMidis().slice(-1)[0]) * 3));
+    if(lpTarget !== lpApplied){ lpNode.frequency.value = lpTarget; lpApplied = lpTarget; }
+
+    // detector range follows the tuning (cheaper, and avoids impossible answers)
+    let minF = 30;
+    if(!isChromatic) minF = Math.max(24, midiToFreq(stringMidis()[0]) * 0.8);
+    const runEvery = (audioCtx.sampleRate / minF > 1000) ? 50 : 33;   // bass notes need a longer search
+
+    if(now >= holdUntil && now - lastRunTime >= runEvery && rmsAll > 0.003){
+      lastRunTime = now;
+      const res = yin(dataBuffer, audioCtx.sampleRate, minF, 1400);
+      const freq = res ? res.freq : null;
+      dbg.runs++;
+      if(!freq) dbg.nulls++;
+      if(freq){
+        dbg.freq = freq; dbg.clarity = res.clarity;
+        lastDetectTime = now;
+        midiHist.push({ m: freqToMidiFloat(freq), w: res.clarity * res.clarity, t: now });
+        while(midiHist.length > 10 || (midiHist.length && now - midiHist[0].t > 500)) midiHist.shift();
+
+        if(midiHist.length >= 3){
+          // median first (kills isolated bad readings), then a reliability-weighted
+          // mean of the readings close to it (steadier than the median alone)
+          const sorted = midiHist.map(h=>h.m).sort((a,b)=>a-b);
+          const medRaw = sorted[Math.floor(sorted.length / 2)];
+          let sw = 0, sm = 0;
+          midiHist.forEach(h=>{ if(Math.abs(h.m - medRaw) < 0.3){ sw += h.w; sm += h.w * h.m; } });
+          const med = sw > 0 ? sm / sw : medRaw;
+
+          const provisional = isChromatic ? Math.round(med) : nearestStringMidi(med);
+          if(provisional === pendingMidi) pendingCount++; else { pendingMidi = provisional; pendingCount = 1; }
+          if(lockedMidi === null || pendingCount >= 3) lockedMidi = pendingMidi;
+
+          let diff = med - lockedMidi;
+          if(!isChromatic) diff = foldOctave(diff);
+          const cents = diff * 100;
+          // soft dead-zone: the needle doesn't move within ±2 cents of the centre and,
+          // outside it, moves continuously (no jump when crossing the edge)
+          actualCents = cents;
+          needleTargetCents = Math.sign(cents) * Math.max(0, Math.abs(cents) - 2);
+          noteActive = true;
+
+          if(!isChromatic){
+            currentStringButtons.forEach(b=>{
+              b.classList.toggle('active', Number(b.dataset.midi) === lockedMidi);
+            });
+          }
+          const noteIdx = ((lockedMidi % 12) + 12) % 12;
+          noteBig.textContent = NOTE_NAMES[noteIdx] + (Math.floor(lockedMidi/12) - 1);
+          freqOut.textContent = midiToFreq(med).toFixed(1);
+          centsOut.textContent = (cents >= 0 ? '+' : '') + cents.toFixed(0);
+          statusLine.textContent = Math.abs(cents) < 5 ? 'Afinado' : (cents > 0 ? 'Muy alto — baja la tensión' : 'Muy bajo — sube la tensión');
+        }
+      }
+    }
+
+    // silence: release the needle back to the centre and clear the note
+    if(noteActive && now - lastDetectTime > 600){
+      resetTracker(); showIdle();
+      statusLine.textContent = 'Escuchando…';
+    }
+
+    dbg.rms = rmsAll;
+    if(now - dbg.last > 1000){
+      const secs = (now - dbg.last) / 1000 || 1;
+      if(debugLine.classList.contains('on')){
+        dbg.txt = 'f ' + dbg.freq.toFixed(1) + ' Hz · claridad ' + dbg.clarity.toFixed(2) +
+          ' · nivel ' + dbg.rms.toFixed(4) + '\nlecturas ' + (dbg.runs/secs).toFixed(0) + '/s · sin tono ' +
+          (dbg.runs ? Math.round(100*dbg.nulls/dbg.runs) : 0) + '% · inicios de nota ' + dbg.onsets +
+          '\nrango ' + minF.toFixed(0) + '–1400 Hz · muestreo ' + audioCtx.sampleRate;
+        debugLine.textContent = dbg.txt;
+      }
+      dbg.runs = 0; dbg.nulls = 0; dbg.onsets = 0; dbg.last = now;
+    }
+
+    renderNeedle(dt);
+  }
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('service-worker.js').catch(()=>{ /* offline install still works without this */ });
+    });
+  }
+
+})();
+</script>
+</body>
+</html>
