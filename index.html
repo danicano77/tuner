@@ -486,7 +486,7 @@
   let lpApplied = 0;
   let actualCents = 0;          // real deviation (the needle uses a dead-zoned version of it)
   let displayCents = 0;
-  const dbg = { runs:0, nulls:0, onsets:0, freq:0, clarity:0, rms:0, last:0, txt:'' };
+  const dbg = { runs:0, nulls:0, onsets:0, refRuns:0, refOk:0, freq:0, clarity:0, rms:0, last:0, txt:'' };
   const debugLine = document.getElementById('debugLine');
   document.getElementById('title').addEventListener('click', ()=> debugLine.classList.toggle('on'));
 
@@ -597,6 +597,54 @@
     const freq = sr / t0;
     if(freq < minF*0.95 || freq > maxF) return null;
     return { freq, clarity: 1 - cmndf[tau] };
+  }
+
+  // ---------- Phase refinement ----------
+  // YIN gives a robust but slightly biased estimate (a string's upper partials are
+  // a little sharp, which drags a time-domain period estimate sharp by a few cents).
+  // So we refine it the "phase vocoder" way: measure the phase of the strongest
+  // low harmonics in two overlapping windows; how much that phase advanced tells
+  // the exact frequency. Each harmonic gives an estimate of the fundamental, and
+  // they must agree with each other — otherwise (noise, neighbouring strings
+  // ringing) we keep the plain YIN value.
+  const PH_L = 3072, PH_H = 1024;
+  const HANN = new Float64Array(PH_L);
+  for(let n=0;n<PH_L;n++) HANN[n] = 0.5 - 0.5*Math.cos(2*Math.PI*n/(PH_L-1));
+  function dftBin(buf, start, f, sr){
+    const w0 = 2*Math.PI*f/sr, cr = Math.cos(w0), ci = Math.sin(w0);
+    let pr = 1, pi = 0, re = 0, im = 0;
+    for(let n=0;n<PH_L;n++){
+      const v = buf[start+n] * HANN[n];
+      re += v*pr; im -= v*pi;
+      const t = pr*cr - pi*ci; pi = pr*ci + pi*cr; pr = t;
+    }
+    return [re, im];
+  }
+  function refinePitch(buf, sr, f0){
+    const N = buf.length;
+    if(N < PH_L + PH_H) return { f: f0, ok: false };
+    const s1 = N - PH_L - PH_H, s2 = N - PH_L;
+    const B = 0.0002;                      // typical string inharmonicity
+    const est = [];
+    for(let k=1; k<=4; k++){
+      const fk = k * f0; if(fk > sr*0.4) break;
+      const X1 = dftBin(buf, s1, fk, sr), X2 = dftBin(buf, s2, fk, sr);
+      const m1 = Math.hypot(X1[0], X1[1]), m2 = Math.hypot(X2[0], X2[1]);
+      const re = X2[0]*X1[0] + X2[1]*X1[1], im = X2[1]*X1[0] - X2[0]*X1[1];
+      let d = Math.atan2(im, re) - 2*Math.PI*fk*PH_H/sr;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      est.push({ f: (fk + d*sr/(2*Math.PI*PH_H)) / k / Math.sqrt(1 + B*k*k), w: m1*m2 });
+    }
+    if(!est.length) return { f: f0, ok: false };
+    const top = Math.max(...est.map(e=>e.w));
+    const use = est.filter(e=>e.w > 0.1*top);
+    let sw = 0, sf = 0; use.forEach(e=>{ sw += e.w; sf += e.w*e.f; });
+    const fm = sf / sw;
+    let sp = 0; use.forEach(e=>{ const c = 1200*Math.log2(e.f/fm); sp += e.w*c*c; });
+    const spread = Math.sqrt(sp / sw);
+    const dev = Math.abs(1200*Math.log2(fm/f0));
+    const ok = dev < 35 && (use.length >= 2 ? spread < 4 : (use.length === 1 && f0 >= 180 && dev < 15));
+    return { f: ok ? fm : f0, ok };
   }
 
   function drawWave(buffer){
@@ -719,9 +767,11 @@
       dbg.runs++;
       if(!freq) dbg.nulls++;
       if(freq){
-        dbg.freq = freq; dbg.clarity = res.clarity;
+        const ref = refinePitch(dataBuffer, audioCtx.sampleRate, freq);
+        dbg.refRuns++; if(ref.ok) dbg.refOk++;
+        dbg.freq = ref.f; dbg.clarity = res.clarity;
         lastDetectTime = now;
-        midiHist.push({ m: freqToMidiFloat(freq), w: res.clarity * res.clarity, t: now });
+        midiHist.push({ m: freqToMidiFloat(ref.f), w: res.clarity * res.clarity, t: now });
         while(midiHist.length > 10 || (midiHist.length && now - midiHist[0].t > 500)) midiHist.shift();
 
         if(midiHist.length >= 3){
@@ -773,10 +823,11 @@
         dbg.txt = 'f ' + dbg.freq.toFixed(1) + ' Hz · claridad ' + dbg.clarity.toFixed(2) +
           ' · nivel ' + dbg.rms.toFixed(4) + '\nlecturas ' + (dbg.runs/secs).toFixed(0) + '/s · sin tono ' +
           (dbg.runs ? Math.round(100*dbg.nulls/dbg.runs) : 0) + '% · inicios de nota ' + dbg.onsets +
+          '\nrefinado por fase ' + (dbg.refRuns ? Math.round(100*dbg.refOk/dbg.refRuns) : 0) + '%' +
           '\nrango ' + minF.toFixed(0) + '–1400 Hz · muestreo ' + audioCtx.sampleRate;
         debugLine.textContent = dbg.txt;
       }
-      dbg.runs = 0; dbg.nulls = 0; dbg.onsets = 0; dbg.last = now;
+      dbg.runs = 0; dbg.nulls = 0; dbg.onsets = 0; dbg.refRuns = 0; dbg.refOk = 0; dbg.last = now;
     }
 
     renderNeedle(dt);

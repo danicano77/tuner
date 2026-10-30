@@ -1,4 +1,4 @@
-const CACHE_NAME = 'afinador-v5';
+const CACHE_NAME = 'afinador-v6';
 const ASSETS = [
   './',
   './index.html',
