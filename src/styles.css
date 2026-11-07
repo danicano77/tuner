@@ -12,6 +12,7 @@
   --warn: #fbbf24;
   --bad: #f87171;
   --radius: 18px;
+  --note-size: clamp(4.5rem, 20vw, 7rem);
 
   color-scheme: dark;
   font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
@@ -163,11 +164,25 @@ button {
   gap: 10px;
 }
 
-.note {
+/*
+ * Alçada reservada: la nota gran i el text d'espera ocupen el mateix espai,
+ * així l'indicador d'afinació no es mou quan apareix o desapareix una nota.
+ */
+.note-slot {
+  width: 100%;
+  height: calc(var(--note-size) * 1.05);
   display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.note {
+  display: inline-flex;
   align-items: baseline;
+  justify-content: center;
   gap: 4px;
-  min-height: 1.2em;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   transition:
     color 0.18s ease,
@@ -175,7 +190,7 @@ button {
 }
 
 .note-name {
-  font-size: clamp(4.5rem, 20vw, 7rem);
+  font-size: var(--note-size);
   font-weight: 700;
   line-height: 0.9;
   letter-spacing: -0.04em;
@@ -204,6 +219,10 @@ button {
 }
 
 .cents {
+  min-height: 1.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: clamp(1rem, 4vw, 1.35rem);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
@@ -325,6 +344,13 @@ button {
   gap: 12px;
 }
 
+.error-slot {
+  min-height: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .error {
   margin: 0;
   color: var(--bad);
@@ -401,6 +427,11 @@ button {
   background: var(--panel-2);
 }
 
+/* Ocupa lloc sempre, però només es veu quan hi ha una nota. */
+.secondary-hidden {
+  visibility: hidden;
+}
+
 .privacy {
   margin: 0;
   text-align: center;
@@ -409,13 +440,13 @@ button {
 }
 
 @media (max-width: 380px) {
+  :root {
+    --note-size: 4rem;
+  }
+
   .app {
     padding-left: 14px;
     padding-right: 14px;
-  }
-
-  .note-name {
-    font-size: 4rem;
   }
 
   .readout {

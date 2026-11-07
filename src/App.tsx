@@ -139,17 +139,19 @@ export default function App() {
       )}
 
       <main className="stage">
-        <div className={`note${inTune ? ' in-tune' : ''}`} aria-live="polite">
-          {reading ? (
-            <>
-              <span className="note-name">{reading.note}</span>
-              <span className="note-octave">{reading.octave}</span>
-            </>
-          ) : (
-            <span className="note-placeholder">
-              {listening ? 'Toqueu una nota' : 'Micròfon aturat'}
-            </span>
-          )}
+        <div className="note-slot" aria-live="polite">
+          <div className={`note${inTune ? ' in-tune' : ''}`}>
+            {reading ? (
+              <>
+                <span className="note-name">{reading.note}</span>
+                <span className="note-octave">{reading.octave}</span>
+              </>
+            ) : (
+              <span className="note-placeholder">
+                {listening ? 'Toqueu una nota' : 'Micròfon aturat'}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className={`cents${inTune ? ' in-tune' : ''}`}>{centsLabel}</div>
@@ -169,11 +171,13 @@ export default function App() {
       </main>
 
       <footer className="controls">
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
+        <div className="error-slot">
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
 
         <LevelMeter level={level} active={listening} />
 
@@ -189,15 +193,16 @@ export default function App() {
                 ? 'Atura el micròfon'
                 : 'Activa el micròfon'}
           </button>
-          {reading && (
-            <button
-              className="secondary"
-              onClick={() => void playReferenceTone()}
-              title={`Escoltar ${noteLabel} de referència`}
-            >
-              Escoltar
-            </button>
-          )}
+          <button
+            className={reading ? 'secondary' : 'secondary secondary-hidden'}
+            onClick={() => void playReferenceTone()}
+            disabled={!reading}
+            aria-hidden={!reading}
+            tabIndex={reading ? 0 : -1}
+            title={`Escoltar ${noteLabel} de referència`}
+          >
+            Escoltar
+          </button>
         </div>
 
         <p className="privacy">L’àudio es processa al teu dispositiu. No s’envia enlloc.</p>
