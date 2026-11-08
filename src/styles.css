@@ -108,7 +108,11 @@ button {
   padding: 16px;
 }
 
-.settings > label {
+.settings-group + .settings-group {
+  margin-top: 16px;
+}
+
+.settings-group > label {
   display: block;
   font-size: 0.78rem;
   text-transform: uppercase;

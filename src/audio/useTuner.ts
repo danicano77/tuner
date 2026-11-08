@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { frequencyToNote, type NoteReading } from './notes';
 import { detectPitch, rms } from './pitch';
+import { SENSITIVITY_CONFIG, type Sensitivity } from './sensitivity';
 
 export type TunerStatus = 'idle' | 'starting' | 'listening' | 'error';
 
@@ -14,10 +15,8 @@ export interface TunerApi {
 }
 
 const DETECTION_INTERVAL_MS = 60;
-const SILENCE_RMS = 0.006;
-const MIN_CLARITY = 0.6;
 const HISTORY_SIZE = 5;
-const SILENCE_TIMEOUT_MS = 400;
+const SILENCE_TIMEOUT_MS = 600;
 const FFT_SIZE = 4096;
 
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
@@ -27,7 +26,7 @@ const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   channelCount: 1,
 };
 
-export function useTuner(referenceA4: number): TunerApi {
+export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerApi {
   const [status, setStatus] = useState<TunerStatus>('idle');
   const [reading, setReading] = useState<NoteReading | null>(null);
   const [level, setLevel] = useState(0);
@@ -38,9 +37,10 @@ export function useTuner(referenceA4: number): TunerApi {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const timerRef = useRef<number | null>(null);
   const historyRef = useRef<number[]>([]);
-  const lastSoundRef = useRef(0);
+  const lastPitchRef = useRef(0);
   const runningRef = useRef(false);
   const referenceRef = useRef(referenceA4);
+  const sensitivityRef = useRef(sensitivity);
 
   useEffect(() => {
     referenceRef.current = referenceA4;
@@ -48,6 +48,10 @@ export function useTuner(referenceA4: number): TunerApi {
       previous ? frequencyToNote(previous.frequency, referenceA4) : previous,
     );
   }, [referenceA4]);
+
+  useEffect(() => {
+    sensitivityRef.current = sensitivity;
+  }, [sensitivity]);
 
   const cleanup = useCallback(() => {
     if (timerRef.current !== null) {
@@ -120,7 +124,7 @@ export function useTuner(referenceA4: number): TunerApi {
       contextRef.current = context;
       analyserRef.current = analyser;
       historyRef.current = [];
-      lastSoundRef.current = performance.now();
+      lastPitchRef.current = performance.now();
 
       const buffer = new Float32Array(analyser.fftSize);
 
@@ -133,17 +137,30 @@ export function useTuner(referenceA4: number): TunerApi {
         const currentLevel = rms(buffer);
         setLevel(currentLevel);
 
-        if (currentLevel < SILENCE_RMS) {
-          if (performance.now() - lastSoundRef.current > SILENCE_TIMEOUT_MS) {
-            historyRef.current = [];
-            setReading(null);
+        const { silenceRms, minClarity } = SENSITIVITY_CONFIG[sensitivityRef.current];
+
+        // Només mantenim la nota si hi ha hagut una detecció vàlida recent.
+        const clearIfStale = () => {
+          if (performance.now() - lastPitchRef.current > SILENCE_TIMEOUT_MS) {
+            if (historyRef.current.length > 0) {
+              historyRef.current = [];
+              setReading(null);
+            }
           }
+        };
+
+        if (currentLevel < silenceRms) {
+          clearIfStale();
           return;
         }
 
-        lastSoundRef.current = performance.now();
         const estimate = detectPitch(buffer, currentContext.sampleRate);
-        if (!estimate || estimate.clarity < MIN_CLARITY) return;
+        if (!estimate || estimate.clarity < minClarity) {
+          clearIfStale();
+          return;
+        }
+
+        lastPitchRef.current = performance.now();
 
         const history = historyRef.current;
         history.push(estimate.frequency);

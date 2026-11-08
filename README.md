@@ -5,6 +5,7 @@ Afinador cromàtic instal·lable, amb micròfon i funcionament offline.
 - **Una sola base de codi** per a mòbil, tauleta i escriptori.
 - **PWA**: s'instal·la des del navegador, sense botigues.
 - **Offline**: un cop carregada, funciona sense xarxa.
+- **Sensibilitat ajustable** (Baixa / Normal / Alta) per captar notes fluixes.
 - **Privacitat**: l'àudio es processa al dispositiu; no s'envia enlloc.
 
 ## Stack
@@ -57,7 +58,8 @@ npm run icons   # regenera les icones PNG
    l'afinador rebi la senyal el més neta possible.
 2. Un `AnalyserNode` de 4096 mostres llegeix el domini temporal cada 60 ms.
 3. L'algorisme **YIN** calcula la freqüència fonamental i una mesura de claredat.
-4. Es filtra el silenci pel RMS i es rebutgen lectures poc clares.
+4. Es filtra el silenci pel RMS (segons la sensibilitat triada) i es rebutgen les
+   lectures poc clares.
 5. Es pren la **mediana de les últimes 5** lectures per estabilitzar la agulla.
 6. Es converteix la freqüència a nota, octava i **cents** respecte d'una referència
    A4 configurable (415–445 Hz).
@@ -83,7 +85,7 @@ scripts/
 ## Properes passes
 
 - Presets d'instrument (guitarra, baix, ukelele, violí…).
-- Calibratge de la sensibilitat i del llindar de silenci.
+- Calibratge automàtic del llindar de soroll de fons.
 - Historial de notes i mode “hold”.
 - Empaquetat amb Capacitor per a les botigues.
 - Mode performance: pantalla gran, contrast alt, bloqueig de pantalla.

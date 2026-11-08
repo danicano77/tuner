@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import {
+  DEFAULT_SENSITIVITY,
+  SENSITIVITY_OPTIONS,
+  type Sensitivity,
+} from './audio/sensitivity';
 import { useTuner } from './audio/useTuner';
 import { Gauge } from './components/Gauge';
 import { LevelMeter } from './components/LevelMeter';
@@ -20,9 +25,10 @@ function getAudioContextClass(): typeof AudioContext | undefined {
 
 export default function App() {
   const [reference, setReference] = useState(440);
+  const [sensitivity, setSensitivity] = useState<Sensitivity>(DEFAULT_SENSITIVITY);
   const [showSettings, setShowSettings] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const { status, reading, level, error, start, stop } = useTuner(reference);
+  const { status, reading, level, error, start, stop } = useTuner(reference, sensitivity);
 
   const listening = status === 'listening';
   const inTune = reading !== null && Math.abs(reading.cents) <= IN_TUNE_CENTS;
@@ -118,23 +124,45 @@ export default function App() {
 
       {showSettings && (
         <section id="settings" className="settings">
-          <label>Referència A4</label>
-          <div className="reference-row" role="group" aria-label="Referència A4">
-            {REFERENCE_PITCHES.map((value) => (
-              <button
-                key={value}
-                className={value === reference ? 'chip active' : 'chip'}
-                onClick={() => setReference(value)}
-                aria-pressed={value === reference}
-              >
-                {value}
-              </button>
-            ))}
+          <div className="settings-group">
+            <label>Referència A4</label>
+            <div className="reference-row" role="group" aria-label="Referència A4">
+              {REFERENCE_PITCHES.map((value) => (
+                <button
+                  key={value}
+                  className={value === reference ? 'chip active' : 'chip'}
+                  onClick={() => setReference(value)}
+                  aria-pressed={value === reference}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              El La central (A4) varia segons l’instrument i l’època. 440 Hz és l’estàndard
+              actual; 415 Hz s’usa sovint en música barroca.
+            </p>
           </div>
-          <p className="hint">
-            El La central (A4) varia segons l’instrument i l’època. 440 Hz és l’estàndard
-            actual; 415 Hz s’usa sovint en música barroca.
-          </p>
+
+          <div className="settings-group">
+            <label>Sensibilitat</label>
+            <div className="reference-row" role="group" aria-label="Sensibilitat">
+              {SENSITIVITY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  className={option.value === sensitivity ? 'chip active' : 'chip'}
+                  onClick={() => setSensitivity(option.value)}
+                  aria-pressed={option.value === sensitivity}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              Si el detector s’apaga amb notes fluixes, apuja la sensibilitat. Si veu notes
+              fantasma amb soroll de fons, baixa-la.
+            </p>
+          </div>
         </section>
       )}
 
