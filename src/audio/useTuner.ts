@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { analysisSettings } from './analysis';
 import { frequencyToNote, type NoteReading } from './notes';
 import { detectPitch, downsample, rms } from './pitch';
 import { SENSITIVITY_CONFIG, type Sensitivity } from './sensitivity';
@@ -17,11 +18,6 @@ export interface TunerApi {
 const DETECTION_INTERVAL_MS = 60;
 const HISTORY_SIZE = 5;
 const SILENCE_TIMEOUT_MS = 600;
-// Finestra llarga per resoldre notes molt greus (B0 ≈ 31 Hz).
-const FFT_SIZE = 8192;
-// Decimem per 2: la meitat de mostres i de cost de càlcul, prou resolució
-// encara per al rang de l'afinador.
-const DOWNSAMPLE_FACTOR = 2;
 
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: false,
@@ -118,9 +114,13 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
         return;
       }
 
+      // Adaptem la finestra i la decimació al maquinari (44,1, 48, 96 kHz…).
+      const { fftSize, factor } = analysisSettings(context.sampleRate);
+      const effectiveSampleRate = context.sampleRate / factor;
+
       const source = context.createMediaStreamSource(stream);
       const analyser = context.createAnalyser();
-      analyser.fftSize = FFT_SIZE;
+      analyser.fftSize = fftSize;
       analyser.smoothingTimeConstant = 0;
       source.connect(analyser);
 
@@ -131,7 +131,7 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
       lastPitchRef.current = performance.now();
 
       const buffer = new Float32Array(analyser.fftSize);
-      const downsampled = new Float32Array(buffer.length / DOWNSAMPLE_FACTOR);
+      const downsampled = new Float32Array(Math.floor(buffer.length / factor));
 
       const tick = () => {
         const currentAnalyser = analyserRef.current;
@@ -160,8 +160,8 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
         }
 
         const estimate = detectPitch(
-          downsample(buffer, DOWNSAMPLE_FACTOR, downsampled),
-          currentContext.sampleRate / DOWNSAMPLE_FACTOR,
+          downsample(buffer, factor, downsampled),
+          effectiveSampleRate,
         );
         if (!estimate || estimate.clarity < minClarity) {
           clearIfStale();

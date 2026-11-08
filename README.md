@@ -58,10 +58,11 @@ npm run icons   # regenera les icones PNG
 1. `getUserMedia` demana el micròfon amb el processament del sistema desactivat
    (sense cancel·lació d'eco, supressió de soroll ni guany automàtic), perquè
    l'afinador rebi la senyal el més neta possible.
-2. Un `AnalyserNode` de 8192 mostres llegeix el domini temporal cada 60 ms.
-   Per a les notes greus es decima la senyal per 2 (4096 mostres a la meitat de
-   freqüència de mostreig): la finestra és prou llarga per resoldre el B0
-   (30,87 Hz) sense multiplicar el cost de càlcul de YIN.
+2. Un `AnalyserNode` llegeix el domini temporal cada 60 ms. La finestra
+   s'adapta al maquinari (8192 mostres a 44,1/48 kHz, 16384 a 96 kHz…) per
+   mantenir uns 170 ms d'àudio, i després es decima la senyal perquè la
+   freqüència efectiva quedi vora 24 kHz. Així la finestra és prou llarga per
+   resoldre el B0 (30,87 Hz) sense multiplicar el cost de càlcul de YIN.
 3. L'algorisme **YIN** calcula la freqüència fonamental i una mesura de claredat.
 4. Es filtra el silenci pel RMS (segons la sensibilitat triada) i es rebutgen les
    lectures poc clares.
@@ -75,6 +76,7 @@ npm run icons   # regenera les icones PNG
 src/
   audio/
     pitch.ts        YIN + RMS + decimació
+    analysis.ts     finestra i decimació segons el maquinari
     notes.ts        freqüència ↔ nota/MIDI/cents
     useTuner.ts     micròfon, bucle de detecció i estat
     *.test.ts       proves
