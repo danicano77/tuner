@@ -6,6 +6,8 @@ Afinador cromàtic instal·lable, amb micròfon i funcionament offline.
 - **PWA**: s'instal·la des del navegador, sense botigues.
 - **Offline**: un cop carregada, funciona sense xarxa.
 - **Sensibilitat ajustable** (Baixa / Normal / Alta) per captar notes fluixes.
+- **Rang ampli**: d'uns 18 Hz a 4,5 kHz; cobreix el B0 d'un baix de 5 cordes i
+  afinacions drop/down (A0, G#0, F#0…).
 - **Privacitat**: l'àudio es processa al dispositiu; no s'envia enlloc.
 
 ## Stack
@@ -56,7 +58,10 @@ npm run icons   # regenera les icones PNG
 1. `getUserMedia` demana el micròfon amb el processament del sistema desactivat
    (sense cancel·lació d'eco, supressió de soroll ni guany automàtic), perquè
    l'afinador rebi la senyal el més neta possible.
-2. Un `AnalyserNode` de 4096 mostres llegeix el domini temporal cada 60 ms.
+2. Un `AnalyserNode` de 8192 mostres llegeix el domini temporal cada 60 ms.
+   Per a les notes greus es decima la senyal per 2 (4096 mostres a la meitat de
+   freqüència de mostreig): la finestra és prou llarga per resoldre el B0
+   (30,87 Hz) sense multiplicar el cost de càlcul de YIN.
 3. L'algorisme **YIN** calcula la freqüència fonamental i una mesura de claredat.
 4. Es filtra el silenci pel RMS (segons la sensibilitat triada) i es rebutgen les
    lectures poc clares.
@@ -69,7 +74,7 @@ npm run icons   # regenera les icones PNG
 ```
 src/
   audio/
-    pitch.ts        YIN + RMS
+    pitch.ts        YIN + RMS + decimació
     notes.ts        freqüència ↔ nota/MIDI/cents
     useTuner.ts     micròfon, bucle de detecció i estat
     *.test.ts       proves

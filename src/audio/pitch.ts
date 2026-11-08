@@ -13,7 +13,9 @@ export interface PitchEstimate {
   clarity: number;
 }
 
-export const MIN_FREQUENCY = 38;
+// 18 Hz cobreix el B0 del baix de 5 cordes (30.87 Hz), el drop A (27.5 Hz)
+// i afinacions baixes fins a ~D0, incloent-hi baixos de 6 cordes (F#0 = 23.12 Hz).
+export const MIN_FREQUENCY = 18;
 export const MAX_FREQUENCY = 4500;
 
 const DEFAULT_THRESHOLD = 0.15;
@@ -27,6 +29,33 @@ export function rms(buffer: Float32Array): number {
     sum += buffer[i] * buffer[i];
   }
   return Math.sqrt(sum / buffer.length);
+}
+
+/**
+ * Decima la senyal agrupant `factor` mostres (mitjana).
+ * Permet analitzar notes molt greus amb una finestra més llarga sense
+ * disparar el cost de càlcul de YIN.
+ */
+export function downsample(
+  input: Float32Array,
+  factor: number,
+  output?: Float32Array,
+): Float32Array {
+  if (factor <= 1) return input;
+
+  const length = Math.floor(input.length / factor);
+  const result = output && output.length === length ? output : new Float32Array(length);
+
+  for (let i = 0; i < length; i += 1) {
+    const start = i * factor;
+    let sum = 0;
+    for (let j = 0; j < factor; j += 1) {
+      sum += input[start + j];
+    }
+    result[i] = sum / factor;
+  }
+
+  return result;
 }
 
 export interface DetectOptions {

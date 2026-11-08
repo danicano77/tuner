@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { frequencyToNote, type NoteReading } from './notes';
-import { detectPitch, rms } from './pitch';
+import { detectPitch, downsample, rms } from './pitch';
 import { SENSITIVITY_CONFIG, type Sensitivity } from './sensitivity';
 
 export type TunerStatus = 'idle' | 'starting' | 'listening' | 'error';
@@ -17,7 +17,11 @@ export interface TunerApi {
 const DETECTION_INTERVAL_MS = 60;
 const HISTORY_SIZE = 5;
 const SILENCE_TIMEOUT_MS = 600;
-const FFT_SIZE = 4096;
+// Finestra llarga per resoldre notes molt greus (B0 ≈ 31 Hz).
+const FFT_SIZE = 8192;
+// Decimem per 2: la meitat de mostres i de cost de càlcul, prou resolució
+// encara per al rang de l'afinador.
+const DOWNSAMPLE_FACTOR = 2;
 
 const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: false,
@@ -127,6 +131,7 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
       lastPitchRef.current = performance.now();
 
       const buffer = new Float32Array(analyser.fftSize);
+      const downsampled = new Float32Array(buffer.length / DOWNSAMPLE_FACTOR);
 
       const tick = () => {
         const currentAnalyser = analyserRef.current;
@@ -154,7 +159,10 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
           return;
         }
 
-        const estimate = detectPitch(buffer, currentContext.sampleRate);
+        const estimate = detectPitch(
+          downsample(buffer, DOWNSAMPLE_FACTOR, downsampled),
+          currentContext.sampleRate / DOWNSAMPLE_FACTOR,
+        );
         if (!estimate || estimate.clarity < minClarity) {
           clearIfStale();
           return;
