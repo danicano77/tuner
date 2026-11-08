@@ -39,6 +39,10 @@ npm run dev
 
 Obre `http://localhost:5173`.
 
+> Si després d'editar el codi el navegador mostra errors del tipus
+> `X is not defined`, atura el servidor, esborra `node_modules/.vite` i torna'l
+> a engegar. És una cau de transformació de Vite, no un error de l'aplicació.
+
 ```bash
 npm test        # proves de detecció de to i de notes
 npm run build   # build de producció + service worker
