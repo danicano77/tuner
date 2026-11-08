@@ -2,7 +2,16 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// GitHub Pages publica el lloc a https://<usuari>.github.io/<repo>/.
+// Quan compila GitHub Actions, GITHUB_REPOSITORY conté "usuari/repo".
+// En local (o en un domini propi) la base és l'arrel.
+const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? '';
+const isUserSite = repoName.toLowerCase().endsWith('.github.io');
+const base =
+  process.env.GITHUB_ACTIONS === 'true' && repoName && !isUserSite ? `/${repoName}/` : '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -17,9 +26,8 @@ export default defineConfig({
         background_color: '#0b0f14',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
-        scope: '/',
         categories: ['music', 'utilities'],
+        // start_url i scope els calcula vite-plugin-pwa a partir de `base`.
         icons: [
           {
             src: 'icons/icon-192.png',

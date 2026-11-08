@@ -57,6 +57,22 @@ npm run icons   # regenera les icones PNG
 - **Escriptori (Chrome/Edge)**: icona d'instal·lar a la barra d'adreces.
 - **macOS (Safari 17+)**: *Arxiu* → *Afegeix al Dock*.
 
+## Publicació a GitHub Pages
+
+El repositori inclou el workflow `.github/workflows/deploy.yml`, que compila i
+publica l'app automàticament a cada push.
+
+1. Al repositori de GitHub: **Settings → Pages → Build and deployment**.
+2. A **Source**, tria **GitHub Actions** (no *Deploy from a branch*).
+3. Fes push a `master` o `main`. El workflow passa els tests, compila i desplega.
+4. L'app quedarà a `https://<usuari>.github.io/<repo>/`.
+
+La ruta base (`/nom-del-repo/`) es calcula sola a `vite.config.ts` a partir de
+`GITHUB_REPOSITORY`, i el manifest i el service worker n'hereten l'abast.
+**No pugis el codi font amb *Deploy from a branch***: el navegador no pot
+executar `index.html` + `src/main.tsx` directament i es veu una pàgina en blanc.
+Tampoc no cal pujar `dist`: el genera GitHub Actions.
+
 ## Com funciona
 
 1. `getUserMedia` demana el micròfon amb el processament del sistema desactivat
