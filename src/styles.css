@@ -376,47 +376,90 @@ button {
   transition: width 0.08s linear;
 }
 
-.button-row {
+.footer-row {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
 }
 
-.primary {
-  flex: 1;
-  border: none;
-  border-radius: 14px;
-  padding: 15px 20px;
-  font-weight: 650;
-  font-size: 1rem;
-  color: #041016;
-  background: linear-gradient(180deg, #67e8f9, var(--accent));
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.18);
+.mic-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.mic-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
   transition:
-    transform 0.08s ease,
-    filter 0.15s ease;
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.primary:hover {
-  filter: brightness(1.05);
+.mic-status.on {
+  color: var(--text);
 }
 
-.primary:active {
-  transform: scale(0.985);
+.mic-status.on .mic-dot {
+  background: var(--good);
+  box-shadow: 0 0 0 3px var(--good-soft);
+  animation: mic-pulse 2.4s ease-in-out infinite;
 }
 
-.primary:disabled {
-  opacity: 0.65;
+.mic-status.starting .mic-dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: mic-pulse 1s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 6px 2px;
+  margin: -6px 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link:hover {
+  filter: brightness(1.15);
+}
+
+.link:disabled {
+  opacity: 0.5;
   cursor: default;
-}
-
-.primary.stop {
-  background: linear-gradient(180deg, #fda4af, var(--bad));
-  color: #1a0505;
-  box-shadow: 0 10px 30px rgba(248, 113, 113, 0.15);
+  text-decoration: none;
 }
 
 .secondary {
+  flex-shrink: 0;
+  min-height: 44px;
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--text);

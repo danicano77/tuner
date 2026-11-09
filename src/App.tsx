@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DEFAULT_SENSITIVITY,
   SENSITIVITY_OPTIONS,
@@ -33,6 +33,31 @@ export default function App() {
   const listening = status === 'listening';
   const inTune = reading !== null && Math.abs(reading.cents) <= IN_TUNE_CENTS;
 
+  // Activa el micròfon sol en carregar. Si el navegador el té suspès fins a un
+  // gest, l'escoltador de `useTuner` el reprendrà al primer toc.
+  useEffect(() => {
+    void start();
+  }, [start]);
+
+  // Si l'activació automàtica falla (permís o gest requerit), reintentem un sol
+  // cop quan l'usuari toca la pantalla o prem una tecla.
+  const autoRetriedRef = useRef(false);
+  useEffect(() => {
+    if (status !== 'error' || autoRetriedRef.current) return;
+
+    const retry = () => {
+      autoRetriedRef.current = true;
+      void start();
+    };
+
+    window.addEventListener('pointerdown', retry, { once: true });
+    window.addEventListener('keydown', retry, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', retry);
+      window.removeEventListener('keydown', retry);
+    };
+  }, [status, start]);
+
   useEffect(() => {
     const handler = (event: Event) => {
       event.preventDefault();
@@ -57,9 +82,15 @@ export default function App() {
     if (!AudioContextClass) return;
 
     const targetFrequency = reading.targetFrequency;
-    if (listening) stop();
+    const wasListening = listening;
+    // Aturem el micròfon perquè no capti el to de referència (retroalimentació).
+    if (wasListening) stop();
 
     const context = new AudioContextClass();
+    const resumeMicrophone = () => {
+      if (wasListening) void start();
+    };
+
     try {
       await context.resume();
       const oscillator = context.createOscillator();
@@ -79,11 +110,13 @@ export default function App() {
       oscillator.stop(now + 1.2);
       oscillator.addEventListener('ended', () => {
         void context.close();
+        resumeMicrophone();
       });
     } catch {
       void context.close();
+      resumeMicrophone();
     }
-  }, [listening, reading, stop]);
+  }, [listening, reading, start, stop]);
 
   const install = useCallback(async () => {
     if (!installEvent) return;
@@ -96,6 +129,12 @@ export default function App() {
   const centsLabel = reading
     ? `${reading.cents >= 0 ? '+' : ''}${reading.cents.toFixed(1)} ¢`
     : '—';
+  const micLabel =
+    status === 'starting'
+      ? 'Activant el micròfon…'
+      : listening
+        ? 'Micròfon actiu'
+        : 'Micròfon aturat';
 
   return (
     <div className="app">
@@ -176,7 +215,11 @@ export default function App() {
               </>
             ) : (
               <span className="note-placeholder">
-                {listening ? 'Toqueu una nota' : 'Micròfon aturat'}
+                {status === 'starting'
+                  ? 'Activant el micròfon…'
+                  : listening
+                    ? 'Toqueu una nota'
+                    : 'Micròfon aturat'}
               </span>
             )}
           </div>
@@ -209,18 +252,22 @@ export default function App() {
 
         <LevelMeter level={level} active={listening} />
 
-        <div className="button-row">
-          <button
-            className={listening ? 'primary stop' : 'primary'}
-            onClick={toggleMicrophone}
-            disabled={status === 'starting'}
+        <div className="footer-row">
+          <div
+            className={`mic-status${listening ? ' on' : ''}${
+              status === 'starting' ? ' starting' : ''
+            }`}
           >
-            {status === 'starting'
-              ? 'Connectant…'
-              : listening
-                ? 'Atura el micròfon'
-                : 'Activa el micròfon'}
-          </button>
+            <span className="mic-dot" aria-hidden="true" />
+            <span>{micLabel}</span>
+            <button
+              className="link"
+              onClick={toggleMicrophone}
+              disabled={status === 'starting'}
+            >
+              {listening ? 'Atura' : status === 'error' ? 'Reintenta' : 'Activa'}
+            </button>
+          </div>
           <button
             className={reading ? 'secondary' : 'secondary secondary-hidden'}
             onClick={() => void playReferenceTone()}

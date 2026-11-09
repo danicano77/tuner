@@ -75,6 +75,11 @@ Tampoc no cal pujar `dist`: el genera GitHub Actions.
 
 ## Com funciona
 
+0. En obrir l'app, el micròfon s'activa sol: es demana permís i comença
+   l'escolta sense cap botó. Si el navegador exigeix un gest (per exemple
+   Safari) o manté l'àudio suspès fins a la primera interacció, el primer toc
+   o tecla el reprèn; a la barra inferior hi ha un enllaç compacte per aturar-lo
+   o reintentar-ho.
 1. `getUserMedia` demana el micròfon amb el processament del sistema desactivat
    (sense cancel·lació d'eco, supressió de soroll ni guany automàtic), perquè
    l'afinador rebi la senyal el més neta possible.

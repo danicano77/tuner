@@ -39,6 +39,7 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
   const historyRef = useRef<number[]>([]);
   const lastPitchRef = useRef(0);
   const runningRef = useRef(false);
+  const sessionRef = useRef(0);
   const referenceRef = useRef(referenceA4);
   const sensitivityRef = useRef(sensitivity);
 
@@ -54,6 +55,8 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
   }, [sensitivity]);
 
   const cleanup = useCallback(() => {
+    // Invalida qualsevol `start()` que encara estigui pendent.
+    sessionRef.current += 1;
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
@@ -80,6 +83,10 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
   const start = useCallback(async () => {
     if (runningRef.current) return;
     runningRef.current = true;
+    sessionRef.current += 1;
+    const session = sessionRef.current;
+    const isStale = () => !runningRef.current || session !== sessionRef.current;
+
     setError(null);
     setStatus('starting');
 
@@ -93,7 +100,7 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
         video: false,
       });
 
-      if (!runningRef.current) {
+      if (isStale()) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -106,12 +113,18 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
       }
 
       const context = new AudioContextClass();
-      await context.resume();
 
-      if (!runningRef.current) {
+      if (isStale()) {
         stream.getTracks().forEach((track) => track.stop());
         void context.close();
         return;
+      }
+
+      // No bloquegem l'inici esperant el `resume()`: alguns navegadors el
+      // mantenen suspès fins al primer gest de l'usuari. El reprendrem amb
+      // l'escoltador global de gestos que hi ha més avall.
+      if (context.state === 'suspended') {
+        void context.resume().catch(() => {});
       }
 
       // Adaptem la finestra i la decimació al maquinari (44,1, 48, 96 kHz…).
@@ -199,6 +212,24 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
       setLevel(0);
     }
   }, [cleanup]);
+
+  // Alguns navegadors creen l'AudioContext suspès fins al primer gest
+  // (política d'autoplay). El reprenem en el primer toc o tecla.
+  useEffect(() => {
+    const resume = () => {
+      const context = contextRef.current;
+      if (context && context.state !== 'running' && context.state !== 'closed') {
+        void context.resume().catch(() => {});
+      }
+    };
+
+    window.addEventListener('pointerdown', resume);
+    window.addEventListener('keydown', resume);
+    return () => {
+      window.removeEventListener('pointerdown', resume);
+      window.removeEventListener('keydown', resume);
+    };
+  }, []);
 
   useEffect(
     () => () => {
