@@ -220,6 +220,151 @@ button {
   background: var(--panel-2);
 }
 
+/* Finestra d'instal·lació. */
+.install.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  animation: modal-in 0.18s ease-out;
+}
+
+.install-title {
+  margin: 0;
+  font-size: 1.25rem;
+  text-align: center;
+}
+
+.install-lead {
+  margin: 8px 0 16px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.install-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.install-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-2);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.install-card:hover,
+.install-card:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.install-card.recommended {
+  border-color: var(--accent);
+}
+
+.install-os {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.install-file {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.install-detail {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.install-badge {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.install-help {
+  margin-top: 16px;
+}
+
+.install-help h3 {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.install-help ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.install-help li + li {
+  margin-top: 4px;
+}
+
+.install-help .hint {
+  margin-top: 10px;
+}
+
+.install-native {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.install-releases {
+  display: block;
+  margin-top: 14px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .install-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .install.modal {
+    max-height: calc(100dvh - 32px);
+  }
+}
+
 @keyframes backdrop-in {
   from {
     opacity: 0;
@@ -241,6 +386,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .modal-backdrop,
   .settings.modal,
+  .install.modal,
   .mic-status.on .mic-dot,
   .mic-status.starting .mic-dot {
     animation: none;

@@ -3,7 +3,7 @@
 Afinador cromàtic instal·lable, amb micròfon i funcionament offline.
 
 - **Una sola base de codi** per a mòbil, tauleta i escriptori.
-- **PWA**: s'instal·la des del navegador, sense botigues.
+- **PWA**: s'instal·la des del navegador o amb els instal·ladors inclosos, sense botigues.
 - **Offline**: un cop carregada, funciona sense xarxa.
 - **Sensibilitat alta fixa** per captar notes fluixes sense configurar res.
 - **Referència A4 ajustable** d'1 en 1 Hz (415–445 Hz).
@@ -53,10 +53,68 @@ npm run icons   # regenera les icones PNG
 
 ## Instal·lació
 
+### Instal·ladors
+
+Cada push a `main` compila quatre paquets i els publica a la release
+[`latest`](https://github.com/danicano77/tuner/releases/latest). Els enllaços
+`/releases/latest/download/<fitxer>` sempre apunten a l'última versió.
+
+| Plataforma | Fitxer | Què fa |
+| --- | --- | --- |
+| Windows | `Afinador-Setup.exe` | Instal·la dreceres a l'escriptori i al menú Inici; obre l'app amb Edge/Chrome en mode aplicació. Es desinstal·la des de Configuració → Aplicacions. |
+| macOS | `Afinador-macOS.dmg` | `Afinador.app` que obre la PWA amb Chrome/Edge/Brave; s'arrossega a Aplicacions. |
+| Android | `Afinador-Android.apk` | Embolcall WebView signat amb clau de prova; carrega la PWA i demana permís de micròfon. |
+| iOS / iPadOS | `Afinador-iOS.mobileconfig` | Perfil amb un Web Clip: icona a la pantalla d'inici i pantalla completa. |
+
+Com que tots els paquets obren la versió publicada, **no cal reinstal·lar** quan
+canvia l'app.
+
+Avisos i detalls:
+
+- **Windows**: si SmartScreen avisa, tria *Més informació* → *Executa de totes
+  maneres*. L'instal·lador no està signat amb un certificat comercial.
+- **macOS**: la primera vegada, clic dret sobre l'app → *Obrir*. Si diu que està
+  malmesa, executa `xattr -dr com.apple.quarantine /Applications/Afinador.app`.
+- **Android**: cal permetre la instal·lació d'orígens desconeguts. L'APK no és
+  apte per a Google Play (signatura de prova). És un embolcall WebView perquè una
+  TWA no pot verificar Digital Asset Links a l'arrel de `github.io`.
+- **iOS**: baixa el perfil amb Safari i instal·la'l des de *Ajustos → General →
+  VPN i gestió de dispositius → Perfil baixat*. iOS mostra un avís perquè el
+  perfil no està signat. També pots fer servir *Comparteix → Afegeix a la
+  pantalla d'inici*.
+
+Dins l'app, el botó **Instal·la** mostra aquestes opcions i enllaça directament
+als fitxers de la release.
+
+### Des del navegador
+
 - **Android (Chrome/Edge)**: menú → *Instal·la l'aplicació*.
 - **iOS (Safari)**: *Comparteix* → *Afegeix a la pantalla d'inici* (iOS 14.5+ per al micròfon).
 - **Escriptori (Chrome/Edge)**: icona d'instal·lar a la barra d'adreces.
 - **macOS (Safari 17+)**: *Arxiu* → *Afegeix al Dock*.
+
+### Compilar els instal·ladors
+
+El workflow `.github/workflows/installers.yml` genera els quatre fitxers i els
+publica a la release `latest`. També es poden compilar a mà:
+
+```bash
+# Windows (amb NSIS instal·lat)
+cd installers/windows
+makensis /DAPP_VERSION=0.1.0 afinador.nsi
+
+# macOS
+installers/macos/build.sh
+
+# Android (JDK 17 + SDK 34 + Gradle 8.7)
+cd installers/android
+gradle assembleRelease
+
+# iOS
+node installers/ios/build.mjs
+```
+
+Els fitxers resultants queden a `dist-installers/`.
 
 ## Publicació a GitHub Pages
 
@@ -107,12 +165,18 @@ src/
     useTuner.ts     micròfon, bucle de detecció i estat
     *.test.ts       proves
   components/
-    Gauge.tsx       indicador de cents
-    LevelMeter.tsx  nivell d'entrada
+    Gauge.tsx          indicador de cents
+    InstallDialog.tsx  instal·lació per plataforma
+    LevelMeter.tsx     nivell d'entrada
   App.tsx           pantalla principal
   styles.css
 scripts/
   generate-icons.mjs
+installers/
+  windows/          NSIS (.exe)
+  macos/            app + DMG
+  android/          projecte Gradle (WebView)
+  ios/              perfil Web Clip (.mobileconfig)
 ```
 
 ## Properes passes

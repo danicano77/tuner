@@ -1,0 +1,16 @@
+Afinador cromàtic
+=================
+
+Les dreceres obren l'afinador en una finestra d'aplicació (sense barra
+d'adreces) amb Microsoft Edge, Google Chrome o Brave (el primer que trobin).
+
+Adreça: https://danicano77.github.io/tuner/
+
+L'aplicació se segueix actualitzant sola des del web: no cal reinstal·lar res
+quan surti una versió nova.
+
+Si Windows SmartScreen mostra un avís en executar l'instal·lador, tria
+"Més informació" i després "Executa de totes maneres". El fitxer no està signat
+amb un certificat comercial.
+
+Per desinstal·lar-lo: Configuració de Windows > Aplicacions > Afinador.

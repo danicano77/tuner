@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTuner } from './audio/useTuner';
 import { Gauge } from './components/Gauge';
+import { InstallDialog } from './components/InstallDialog';
 import { LevelMeter } from './components/LevelMeter';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -22,6 +23,7 @@ function getAudioContextClass(): typeof AudioContext | undefined {
 export default function App() {
   const [reference, setReference] = useState(440);
   const [showSettings, setShowSettings] = useState(false);
+  const [showInstall, setShowInstall] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const settingsRef = useRef<HTMLElement | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -38,6 +40,8 @@ export default function App() {
     setShowSettings(false);
     settingsButtonRef.current?.focus();
   }, []);
+
+  const closeInstall = useCallback(() => setShowInstall(false), []);
 
   useEffect(() => {
     if (!showSettings) return;
@@ -141,6 +145,7 @@ export default function App() {
     await installEvent.prompt();
     await installEvent.userChoice;
     setInstallEvent(null);
+    setShowInstall(false);
   }, [installEvent]);
 
   const noteLabel = reading ? `${reading.note}${reading.octave}` : '—';
@@ -162,11 +167,9 @@ export default function App() {
           <span>Afinador</span>
         </div>
         <div className="topbar-actions">
-          {installEvent && (
-            <button className="ghost" onClick={() => void install()}>
-              Instal·la
-            </button>
-          )}
+          <button className="ghost" onClick={() => setShowInstall(true)}>
+            Instal·la
+          </button>
           <button
             ref={settingsButtonRef}
             className="ghost"
@@ -179,6 +182,13 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {showInstall && (
+        <InstallDialog
+          onClose={closeInstall}
+          onNativeInstall={installEvent ? () => void install() : undefined}
+        />
+      )}
 
       {showSettings && (
         <div className="modal-backdrop" onClick={closeSettings}>

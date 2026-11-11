@@ -1,0 +1,30 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.danicano77.afinador'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'io.github.danicano77.afinador'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '0.1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Signatura de depuració: l'APK s'instal·la manualment, però no es
+            // pot publicar a Google Play amb aquesta clau.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

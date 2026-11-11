@@ -1,0 +1,167 @@
+name: Instal·ladors
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: installers
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepara NSIS
+        shell: pwsh
+        run: |
+          $makensis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path $makensis)) {
+            choco install nsis -y --no-progress
+          }
+
+      - name: Llegeix la versió
+        id: package
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Compila l'instal·lador
+        shell: pwsh
+        working-directory: installers/windows
+        run: |
+          New-Item -ItemType Directory -Force -Path ../../dist-installers | Out-Null
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" "/DAPP_VERSION=${{ steps.package.outputs.version }}" afinador.nsi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist-installers/Afinador-Setup.exe
+          if-no-files-found: error
+
+  macos:
+    name: macOS (.dmg)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compila l'app i el DMG
+        run: |
+          sed -i '' 's/\r$//' installers/macos/build.sh
+          chmod +x installers/macos/build.sh
+          VERSION="$(node -p "require('./package.json').version")"
+          export VERSION
+          installers/macos/build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist-installers/Afinador-macOS.dmg
+          if-no-files-found: error
+
+  android:
+    name: Android (.apk)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Instal·la el SDK d'Android
+        run: sdkmanager --install "platforms;android-34" "build-tools;34.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Compila l'APK
+        working-directory: installers/android
+        run: gradle assembleRelease --no-daemon
+
+      - name: Prepara l'APK
+        run: |
+          mkdir -p dist-installers
+          cp installers/android/app/build/outputs/apk/release/app-release.apk dist-installers/Afinador-Android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist-installers/Afinador-Android.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS (.mobileconfig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Genera el perfil
+        run: node installers/ios/build.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: dist-installers/Afinador-iOS.mobileconfig
+          if-no-files-found: error
+
+  release:
+    name: Publica la versió latest
+    needs: [windows, macos, android, ios]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist-installers
+          merge-multiple: true
+
+      - name: Publica els fitxers
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Instal·ladors (última versió)
+          make_latest: true
+          fail_on_unmatched_files: true
+          body: |
+            Instal·ladors de l'Afinador cromàtic per a totes les plataformes.
+
+            | Plataforma | Fitxer |
+            | --- | --- |
+            | Windows | `Afinador-Setup.exe` |
+            | macOS | `Afinador-macOS.dmg` |
+            | Android | `Afinador-Android.apk` |
+            | iOS / iPadOS | `Afinador-iOS.mobileconfig` |
+
+            Totes les versions obren la mateixa aplicació web publicada, així que
+            s'actualitzen soles. No cal tornar a instal·lar-les quan surt una
+            versió nova.
+
+            **Avisos de signatura**
+
+            - Windows pot mostrar SmartScreen: *Més informació → Executa de totes maneres*.
+            - macOS pot demanar clic dret → *Obrir* la primera vegada.
+            - L'APK d'Android està signat amb una clau de prova (instal·lació manual).
+            - El perfil d'iOS no està signat per Apple; iOS en mostra un avís.
+
+            Més detalls al README del repositori.
+          files: |
+            dist-installers/Afinador-Setup.exe
+            dist-installers/Afinador-macOS.dmg
+            dist-installers/Afinador-Android.apk
+            dist-installers/Afinador-iOS.mobileconfig
