@@ -23,6 +23,8 @@ export default function App() {
   const [reference, setReference] = useState(440);
   const [showSettings, setShowSettings] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const settingsRef = useRef<HTMLElement | null>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const { status, reading, level, error, start, stop } = useTuner(reference);
 
   const listening = status === 'listening';
@@ -31,6 +33,23 @@ export default function App() {
   const changeReference = useCallback((delta: number) => {
     setReference((value) => Math.min(MAX_REFERENCE, Math.max(MIN_REFERENCE, value + delta)));
   }, []);
+
+  const closeSettings = useCallback(() => {
+    setShowSettings(false);
+    settingsButtonRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!showSettings) return;
+
+    settingsRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSettings();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [closeSettings, showSettings]);
 
   // Activa el micròfon sol en carregar. Si el navegador el té suspès fins a un
   // gest, l'escoltador de `useTuner` el reprendrà al primer toc.
@@ -149,6 +168,7 @@ export default function App() {
             </button>
           )}
           <button
+            ref={settingsButtonRef}
             className="ghost"
             onClick={() => setShowSettings((value) => !value)}
             aria-expanded={showSettings}
@@ -161,37 +181,51 @@ export default function App() {
       </header>
 
       {showSettings && (
-        <section id="settings" className="settings">
-          <div className="settings-group">
-            <label htmlFor="reference-value">Referència A4</label>
-            <div className="stepper" role="group" aria-label="Referència A4">
-              <button
-                className="stepper-button"
-                onClick={() => changeReference(-1)}
-                disabled={reference <= MIN_REFERENCE}
-                aria-label="Baixa la referència A4 un hertz"
-              >
-                −
-              </button>
-              <output id="reference-value" className="stepper-value" aria-live="polite">
-                {reference} Hz
-              </output>
-              <button
-                className="stepper-button"
-                onClick={() => changeReference(1)}
-                disabled={reference >= MAX_REFERENCE}
-                aria-label="Apuja la referència A4 un hertz"
-              >
-                +
-              </button>
+        <div className="modal-backdrop" onClick={closeSettings}>
+          <section
+            id="settings"
+            ref={settingsRef}
+            className="settings modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Configuració"
+            tabIndex={-1}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="settings-group">
+              <label htmlFor="reference-value">Referència A4</label>
+              <div className="stepper" role="group" aria-label="Referència A4">
+                <button
+                  className="stepper-button"
+                  onClick={() => changeReference(-1)}
+                  disabled={reference <= MIN_REFERENCE}
+                  aria-label="Baixa la referència A4 un hertz"
+                >
+                  −
+                </button>
+                <output id="reference-value" className="stepper-value" aria-live="polite">
+                  {reference} Hz
+                </output>
+                <button
+                  className="stepper-button"
+                  onClick={() => changeReference(1)}
+                  disabled={reference >= MAX_REFERENCE}
+                  aria-label="Apuja la referència A4 un hertz"
+                >
+                  +
+                </button>
+              </div>
+              <p className="hint">
+                El La central (A4) varia segons l’instrument i l’època. Ajusta’l d’1 en 1 Hz
+                entre {MIN_REFERENCE} i {MAX_REFERENCE} Hz; 440 Hz és l’estàndard actual i 415 Hz
+                s’usa sovint en música barroca.
+              </p>
             </div>
-            <p className="hint">
-              El La central (A4) varia segons l’instrument i l’època. Ajusta’l d’1 en 1 Hz
-              entre {MIN_REFERENCE} i {MAX_REFERENCE} Hz; 440 Hz és l’estàndard actual i 415 Hz
-              s’usa sovint en música barroca.
-            </p>
-          </div>
-        </section>
+            <button className="secondary modal-close" onClick={closeSettings}>
+              Fet
+            </button>
+          </section>
+        </div>
       )}
 
       <main className="stage">
