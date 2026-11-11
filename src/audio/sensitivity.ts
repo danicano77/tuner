@@ -12,14 +12,6 @@ export const SENSITIVITY_CONFIG: Record<Sensitivity, SensitivityConfig> = {
   low: { silenceRms: 0.004, minClarity: 0.65 },
   // Equilibri per a la majoria d'instruments i sales.
   normal: { silenceRms: 0.0012, minClarity: 0.55 },
-  // Notes fluixes o micròfons amb poca ganància.
+  // Notes fluixes o micròfons amb poca ganància. És la que fem servir sempre.
   high: { silenceRms: 0.0004, minClarity: 0.5 },
 };
-
-export const SENSITIVITY_OPTIONS: ReadonlyArray<{ value: Sensitivity; label: string }> = [
-  { value: 'low', label: 'Baixa' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'high', label: 'Alta' },
-];
-
-export const DEFAULT_SENSITIVITY: Sensitivity = 'high';

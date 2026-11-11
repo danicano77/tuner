@@ -121,35 +121,49 @@ button {
   margin-bottom: 10px;
 }
 
-.reference-row {
+.stepper {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
 }
 
-.chip {
+.stepper-button {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
   border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 6px 11px;
-  font-size: 0.82rem;
-  cursor: pointer;
-  font-variant-numeric: tabular-nums;
-  transition:
-    color 0.15s,
-    border-color 0.15s,
-    background 0.15s;
-}
-
-.chip:hover {
+  background: var(--panel-2);
   color: var(--text);
+  border-radius: 12px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
-.chip.active {
-  background: var(--accent-soft);
+.stepper-button:hover:not(:disabled) {
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.stepper-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.stepper-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper-value {
+  min-width: 100px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
 }
 
 .hint {

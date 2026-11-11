@@ -5,7 +5,8 @@ Afinador cromàtic instal·lable, amb micròfon i funcionament offline.
 - **Una sola base de codi** per a mòbil, tauleta i escriptori.
 - **PWA**: s'instal·la des del navegador, sense botigues.
 - **Offline**: un cop carregada, funciona sense xarxa.
-- **Sensibilitat ajustable** (Baixa / Normal / Alta) per captar notes fluixes.
+- **Sensibilitat alta fixa** per captar notes fluixes sense configurar res.
+- **Referència A4 ajustable** d'1 en 1 Hz (415–445 Hz).
 - **Rang ampli**: d'uns 18 Hz a 4,5 kHz; cobreix el B0 d'un baix de 5 cordes i
   afinacions drop/down (A0, G#0, F#0…).
 - **Privacitat**: l'àudio es processa al dispositiu; no s'envia enlloc.
@@ -89,7 +90,7 @@ Tampoc no cal pujar `dist`: el genera GitHub Actions.
    freqüència efectiva quedi vora 24 kHz. Així la finestra és prou llarga per
    resoldre el B0 (30,87 Hz) sense multiplicar el cost de càlcul de YIN.
 3. L'algorisme **YIN** calcula la freqüència fonamental i una mesura de claredat.
-4. Es filtra el silenci pel RMS (segons la sensibilitat triada) i es rebutgen les
+4. Es filtra el silenci pel RMS (amb sensibilitat alta fixa) i es rebutgen les
    lectures poc clares.
 5. Es pren la **mediana de les últimes 5** lectures per estabilitzar la agulla.
 6. Es converteix la freqüència a nota, octava i **cents** respecte d'una referència

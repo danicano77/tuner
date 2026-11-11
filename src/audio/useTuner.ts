@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { analysisSettings } from './analysis';
 import { frequencyToNote, type NoteReading } from './notes';
 import { detectPitch, downsample, rms } from './pitch';
-import { SENSITIVITY_CONFIG, type Sensitivity } from './sensitivity';
+import { SENSITIVITY_CONFIG } from './sensitivity';
 
 export type TunerStatus = 'idle' | 'starting' | 'listening' | 'error';
 
@@ -26,7 +26,7 @@ const AUDIO_CONSTRAINTS: MediaTrackConstraints = {
   channelCount: 1,
 };
 
-export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerApi {
+export function useTuner(referenceA4: number): TunerApi {
   const [status, setStatus] = useState<TunerStatus>('idle');
   const [reading, setReading] = useState<NoteReading | null>(null);
   const [level, setLevel] = useState(0);
@@ -41,7 +41,6 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
   const runningRef = useRef(false);
   const sessionRef = useRef(0);
   const referenceRef = useRef(referenceA4);
-  const sensitivityRef = useRef(sensitivity);
 
   useEffect(() => {
     referenceRef.current = referenceA4;
@@ -49,10 +48,6 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
       previous ? frequencyToNote(previous.frequency, referenceA4) : previous,
     );
   }, [referenceA4]);
-
-  useEffect(() => {
-    sensitivityRef.current = sensitivity;
-  }, [sensitivity]);
 
   const cleanup = useCallback(() => {
     // Invalida qualsevol `start()` que encara estigui pendent.
@@ -155,7 +150,7 @@ export function useTuner(referenceA4: number, sensitivity: Sensitivity): TunerAp
         const currentLevel = rms(buffer);
         setLevel(currentLevel);
 
-        const { silenceRms, minClarity } = SENSITIVITY_CONFIG[sensitivityRef.current];
+        const { silenceRms, minClarity } = SENSITIVITY_CONFIG.high;
 
         // Només mantenim la nota si hi ha hagut una detecció vàlida recent.
         const clearIfStale = () => {

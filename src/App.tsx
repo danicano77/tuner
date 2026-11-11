@@ -1,9 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  DEFAULT_SENSITIVITY,
-  SENSITIVITY_OPTIONS,
-  type Sensitivity,
-} from './audio/sensitivity';
 import { useTuner } from './audio/useTuner';
 import { Gauge } from './components/Gauge';
 import { LevelMeter } from './components/LevelMeter';
@@ -13,7 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const REFERENCE_PITCHES = [415, 430, 432, 435, 438, 440, 442, 443, 444, 445];
+const MIN_REFERENCE = 415;
+const MAX_REFERENCE = 445;
 const IN_TUNE_CENTS = 5;
 
 function getAudioContextClass(): typeof AudioContext | undefined {
@@ -25,13 +21,16 @@ function getAudioContextClass(): typeof AudioContext | undefined {
 
 export default function App() {
   const [reference, setReference] = useState(440);
-  const [sensitivity, setSensitivity] = useState<Sensitivity>(DEFAULT_SENSITIVITY);
   const [showSettings, setShowSettings] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const { status, reading, level, error, start, stop } = useTuner(reference, sensitivity);
+  const { status, reading, level, error, start, stop } = useTuner(reference);
 
   const listening = status === 'listening';
   const inTune = reading !== null && Math.abs(reading.cents) <= IN_TUNE_CENTS;
+
+  const changeReference = useCallback((delta: number) => {
+    setReference((value) => Math.min(MAX_REFERENCE, Math.max(MIN_REFERENCE, value + delta)));
+  }, []);
 
   // Activa el micròfon sol en carregar. Si el navegador el té suspès fins a un
   // gest, l'escoltador de `useTuner` el reprendrà al primer toc.
@@ -164,42 +163,32 @@ export default function App() {
       {showSettings && (
         <section id="settings" className="settings">
           <div className="settings-group">
-            <label>Referència A4</label>
-            <div className="reference-row" role="group" aria-label="Referència A4">
-              {REFERENCE_PITCHES.map((value) => (
-                <button
-                  key={value}
-                  className={value === reference ? 'chip active' : 'chip'}
-                  onClick={() => setReference(value)}
-                  aria-pressed={value === reference}
-                >
-                  {value}
-                </button>
-              ))}
+            <label htmlFor="reference-value">Referència A4</label>
+            <div className="stepper" role="group" aria-label="Referència A4">
+              <button
+                className="stepper-button"
+                onClick={() => changeReference(-1)}
+                disabled={reference <= MIN_REFERENCE}
+                aria-label="Baixa la referència A4 un hertz"
+              >
+                −
+              </button>
+              <output id="reference-value" className="stepper-value" aria-live="polite">
+                {reference} Hz
+              </output>
+              <button
+                className="stepper-button"
+                onClick={() => changeReference(1)}
+                disabled={reference >= MAX_REFERENCE}
+                aria-label="Apuja la referència A4 un hertz"
+              >
+                +
+              </button>
             </div>
             <p className="hint">
-              El La central (A4) varia segons l’instrument i l’època. 440 Hz és l’estàndard
-              actual; 415 Hz s’usa sovint en música barroca.
-            </p>
-          </div>
-
-          <div className="settings-group">
-            <label>Sensibilitat</label>
-            <div className="reference-row" role="group" aria-label="Sensibilitat">
-              {SENSITIVITY_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  className={option.value === sensitivity ? 'chip active' : 'chip'}
-                  onClick={() => setSensitivity(option.value)}
-                  aria-pressed={option.value === sensitivity}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <p className="hint">
-              Si el detector s’apaga amb notes fluixes, apuja la sensibilitat. Si veu notes
-              fantasma amb soroll de fons, baixa-la.
+              El La central (A4) varia segons l’instrument i l’època. Ajusta’l d’1 en 1 Hz
+              entre {MIN_REFERENCE} i {MAX_REFERENCE} Hz; 440 Hz és l’estàndard actual i 415 Hz
+              s’usa sovint en música barroca.
             </p>
           </div>
         </section>
